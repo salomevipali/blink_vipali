@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>Blink VIPALI — Compteur de clignements</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <span class="topbar-name">Blink VIPALI</span>
+    <ol class="steps-indicator" id="stepsIndicator">
+      <li class="step-dot active" data-step="intro">1</li>
+      <li class="step-dot" data-step="mesure">2</li>
+      <li class="step-dot" data-step="report">3</li>
+    </ol>
+  </header>
+
+  <main class="app">
+
+    <!-- ── ÉTAPE 1 — Instructions ─────────────────────────────────────── -->
+    <section class="step step-intro" id="stepIntro">
+      <div class="card">
+        <h1>Mesure ton clignement des yeux</h1>
+        <p class="lead">
+          La caméra suit tes yeux pour compter tes clignements et évaluer ton
+          rythme, leur durée et leur régularité — des indicateurs liés à la
+          fatigue et à la concentration.
+        </p>
+
+        <ul class="checklist">
+          <li>Installe-toi face à la caméra, dans une pièce bien éclairée</li>
+          <li>Garde le visage visible et reste immobile pendant la mesure</li>
+          <li>Rien n'est enregistré ni envoyé : tout se passe dans ton navigateur</li>
+        </ul>
+
+        <div class="field">
+          <label for="dureeInput">Durée de la mesure</label>
+          <select id="dureeInput">
+            <option value="30">30 secondes</option>
+            <option value="60">1 minute</option>
+            <option value="90" selected>1 minute 30</option>
+            <option value="180">3 minutes</option>
+            <option value="0">Libre (j'arrête moi-même)</option>
+          </select>
+        </div>
+
+        <button id="btnStart" class="btn btn-primary btn-large">Commencer la mesure</button>
+        <p class="error-note" id="introError" hidden></p>
+      </div>
+    </section>
+
+    <!-- ── ÉTAPE 2 — Mesure en cours ──────────────────────────────────── -->
+    <section class="step step-mesure" id="stepMesure" hidden>
+
+      <div class="video-frame">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+      </div>
+
+      <div class="mesure-readouts">
+        <div class="readout-big">
+          <span class="readout-big-value" id="valBlinks">0</span>
+          <span class="readout-big-label">clignements</span>
+        </div>
+
+        <div class="readout-row">
+          <div class="readout-cell">
+            <span class="readout-cell-label">EAR</span>
+            <span class="readout-cell-value" id="valEar">0.000</span>
+            <div class="gauge">
+              <div class="gauge-fill" id="gaugeEar"></div>
+              <div class="gauge-threshold" id="gaugeThreshold"></div>
+            </div>
+          </div>
+          <div class="readout-cell">
+            <span class="readout-cell-label">Blink rate</span>
+            <span class="readout-cell-value" id="valBR">— /min</span>
+          </div>
+        </div>
+
+        <div class="progress">
+          <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="mesure-foot">
+          <span id="valTemps">0 s</span>
+          <span id="valQuality" class="quality-note">démarrage…</span>
+        </div>
+      </div>
+
+      <button id="btnStop" class="btn btn-ghost btn-large">Arrêter &amp; voir le résultat</button>
+    </section>
+
+    <!-- ── ÉTAPE 3 — Résultat ─────────────────────────────────────────── -->
+    <section class="step step-report" id="stepReport" hidden>
+      <div class="report-head">
+        <h2>Résultat</h2>
+        <span class="report-score" id="reportScoreBadge">—</span>
+      </div>
+
+      <div class="report-grid">
+        <div class="report-metric">
+          <span class="report-metric-label">Blink Rate</span>
+          <span class="report-metric-value" id="repBR">—</span>
+          <span class="report-metric-sub">optimal ≈ 15/min</span>
+        </div>
+        <div class="report-metric">
+          <span class="report-metric-label">Blink Duration</span>
+          <span class="report-metric-value" id="repBD">—</span>
+          <span class="report-metric-sub">optimal ≈ 150 ms</span>
+        </div>
+        <div class="report-metric">
+          <span class="report-metric-label">Variabilité (BRV)</span>
+          <span class="report-metric-value" id="repBRV">—</span>
+          <span class="report-metric-sub">plus bas = plus régulier</span>
+        </div>
+        <div class="report-metric">
+          <span class="report-metric-label">EAR baseline</span>
+          <span class="report-metric-value" id="repEAR">—</span>
+          <span class="report-metric-sub">optimal ≈ 0.28</span>
+        </div>
+      </div>
+
+      <div class="report-charts">
+        <div class="report-chart-block">
+          <span class="report-chart-title">Signal EAR — clignements détectés</span>
+          <canvas id="chartEarSignal" height="180"></canvas>
+        </div>
+        <div class="report-chart-block">
+          <span class="report-chart-title">Distribution des durées de clignements</span>
+          <canvas id="chartDurations" height="180"></canvas>
+        </div>
+      </div>
+
+      <div class="report-bars" id="reportBars"></div>
+
+      <button id="btnRestart" class="btn btn-primary btn-large">Refaire une mesure</button>
+    </section>
+
+  </main>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>

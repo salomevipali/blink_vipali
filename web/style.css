@@ -1,0 +1,262 @@
+:root {
+  --bg: #0d1117;
+  --panel: #151b23;
+  --panel-line: #262f3a;
+  --ink: #e8ecf1;
+  --ink-dim: #8b96a5;
+  --ear-blue: #4a90d9;
+  --blink-orange: #f39c12;
+  --alert-red: #e05c5c;
+  --good-green: #5cb85c;
+  --radius: 12px;
+  font-size: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Iowan Old Style", "Georgia", ui-serif, serif;
+  min-height: 100vh;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--panel-line);
+}
+
+.topbar-name { font-size: 1.05rem; letter-spacing: 0.01em; }
+
+.steps-indicator {
+  display: flex;
+  gap: 8px;
+  list-style: none;
+  margin: 0; padding: 0;
+}
+.step-dot {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--panel-line);
+  display: flex; align-items: center; justify-content: center;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+}
+.step-dot.active { border-color: var(--ear-blue); color: var(--ear-blue); }
+.step-dot.done { border-color: var(--good-green); color: var(--good-green); }
+
+.app {
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 32px 20px 60px;
+}
+
+.btn {
+  font-family: inherit;
+  font-size: 0.95rem;
+  padding: 11px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--panel-line);
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  width: 100%;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary { background: var(--ear-blue); border-color: var(--ear-blue); color: #071018; font-weight: 600; }
+.btn-primary:hover:not(:disabled) { opacity: 0.88; }
+.btn-ghost { background: transparent; color: var(--ink); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--ink-dim); }
+.btn-large { padding: 15px 20px; font-size: 1rem; margin-top: 20px; }
+
+/* ── Étape 1 — Instructions ────────────────────────────────────────────── */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+}
+
+.card h1 { font-size: 1.5rem; font-weight: 500; margin: 0 0 12px; line-height: 1.25; }
+.lead { color: var(--ink-dim); font-size: 0.95rem; line-height: 1.55; margin: 0 0 22px; }
+
+.checklist {
+  list-style: none;
+  margin: 0 0 24px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.checklist li {
+  padding-left: 20px;
+  position: relative;
+  font-size: 0.88rem;
+  color: var(--ink);
+  line-height: 1.4;
+}
+.checklist li::before {
+  content: "—";
+  position: absolute;
+  left: 0;
+  color: var(--ear-blue);
+}
+
+.field { margin-bottom: 6px; }
+.field label {
+  display: block;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+}
+.field select {
+  width: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  border: 1px solid var(--panel-line);
+  border-radius: 6px;
+  padding: 10px;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.error-note { color: var(--alert-red); font-size: 0.85rem; margin-top: 14px; }
+
+/* ── Étape 2 — Mesure ─────────────────────────────────────────────────── */
+
+.video-frame {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--panel-line);
+}
+video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+#overlay { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); }
+
+.mesure-readouts {
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  margin-top: -1px;
+  padding: 20px;
+}
+
+.readout-big { text-align: center; margin-bottom: 18px; }
+.readout-big-value {
+  display: block;
+  font-size: 3.2rem;
+  color: var(--blink-orange);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.readout-big-label {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.75rem;
+  color: var(--ink-dim);
+}
+
+.readout-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.readout-cell {
+  background: var(--bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  padding: 12px;
+}
+.readout-cell-label {
+  display: block;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+  margin-bottom: 4px;
+}
+.readout-cell-value { font-size: 1.15rem; color: var(--ear-blue); font-variant-numeric: tabular-nums; }
+
+.gauge {
+  position: relative;
+  margin-top: 8px;
+  height: 6px;
+  border-radius: 3px;
+  background: #262f3a;
+}
+.gauge-fill { height: 100%; border-radius: 3px; background: var(--good-green); width: 0%; transition: width 0.08s linear, background 0.15s ease; }
+.gauge-threshold { position: absolute; top: -2px; width: 2px; height: 10px; background: var(--alert-red); }
+
+.progress { height: 6px; border-radius: 3px; background: #262f3a; overflow: hidden; margin-bottom: 8px; }
+.progress-fill { height: 100%; width: 0%; background: var(--ear-blue); transition: width 0.2s linear; }
+
+.mesure-foot {
+  display: flex;
+  justify-content: space-between;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+}
+.quality-note.ok { color: var(--good-green); }
+.quality-note.warn { color: var(--alert-red); }
+
+/* ── Étape 3 — Résultat ───────────────────────────────────────────────── */
+
+.report-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 22px;
+}
+.report-head h2 { font-size: 1.3rem; font-weight: 500; margin: 0; }
+.report-score { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 1.6rem; color: var(--ear-blue); }
+
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.report-metric {
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  padding: 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.report-metric-label { font-size: 0.68rem; color: var(--ink-dim); font-family: ui-monospace, monospace; }
+.report-metric-value { font-size: 1.25rem; color: var(--ink); font-variant-numeric: tabular-nums; }
+.report-metric-sub { font-size: 0.68rem; color: var(--ink-dim); }
+
+.report-charts { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+.report-chart-block {
+  background: var(--panel);
+  border: 1px solid var(--panel-line);
+  border-radius: 10px;
+  padding: 13px;
+}
+.report-chart-title {
+  display: block;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.68rem;
+  color: var(--ink-dim);
+  margin-bottom: 8px;
+}
+.report-chart-block canvas { width: 100%; display: block; }
+
+.report-bars { display: flex; flex-direction: column; gap: 9px; margin-bottom: 6px; }
+.report-bar-row { display: grid; grid-template-columns: 90px 1fr 34px; align-items: center; gap: 8px; }
+.report-bar-label { font-size: 0.74rem; color: var(--ink-dim); font-family: ui-monospace, monospace; }
+.report-bar-track { height: 9px; border-radius: 5px; background: #262f3a; overflow: hidden; }
+.report-bar-fill { height: 100%; border-radius: 5px; }
+.report-bar-num { font-size: 0.78rem; text-align: right; font-variant-numeric: tabular-nums; }
