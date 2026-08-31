@@ -12,8 +12,9 @@
     <span class="topbar-name">Blink VIPALI</span>
     <ol class="steps-indicator" id="stepsIndicator">
       <li class="step-dot active" data-step="intro">1</li>
-      <li class="step-dot" data-step="mesure">2</li>
-      <li class="step-dot" data-step="report">3</li>
+      <li class="step-dot" data-step="calib">2</li>
+      <li class="step-dot" data-step="mesure">3</li>
+      <li class="step-dot" data-step="report">4</li>
     </ol>
   </header>
 
@@ -46,18 +47,54 @@
           </select>
         </div>
 
-        <button id="btnStart" class="btn btn-primary btn-large">Commencer la mesure</button>
+        <button id="btnStart" class="btn btn-primary btn-large">Commencer</button>
         <p class="error-note" id="introError" hidden></p>
       </div>
     </section>
 
-    <!-- ── ÉTAPE 2 — Mesure en cours ──────────────────────────────────── -->
-    <section class="step step-mesure" id="stepMesure" hidden>
+    <!-- ── Zone caméra partagée (calibration + mesure) ───────────────────── -->
+    <div class="video-frame" id="captureArea" hidden>
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+    </div>
 
-      <div class="video-frame">
-        <video id="video" autoplay playsinline muted></video>
-        <canvas id="overlay"></canvas>
+    <!-- ── ÉTAPE 2 — Calibration ──────────────────────────────────────── -->
+    <section class="step step-calib" id="stepCalib" hidden>
+      <div class="calib-panel">
+        <span class="panel-title">Calibration</span>
+        <p class="calib-instruction" id="calibInstruction">
+          Regarde la caméra, les yeux bien ouverts.
+        </p>
+
+        <div class="calib-live">
+          <span class="calib-live-label">EAR en direct</span>
+          <span class="calib-live-value" id="calibLiveEar">0.000</span>
+        </div>
+
+        <div class="calib-phases">
+          <div class="calib-phase">
+            <span class="calib-phase-label">1 · Yeux ouverts</span>
+            <span class="calib-phase-value" id="calibOpenValue">—</span>
+            <button id="btnCalibOpen" class="btn btn-primary">Capturer (2 s)</button>
+          </div>
+          <div class="calib-phase">
+            <span class="calib-phase-label">2 · Yeux fermés</span>
+            <span class="calib-phase-value" id="calibClosedValue">—</span>
+            <button id="btnCalibClosed" class="btn btn-primary" disabled>Capturer (2 s)</button>
+          </div>
+        </div>
+
+        <p class="calib-result" id="calibResult" hidden></p>
+        <p class="calib-warning" id="calibWarning" hidden></p>
+
+        <button id="btnCalibNext" class="btn btn-primary btn-large" disabled>Commencer la mesure</button>
+        <button id="btnCalibRedo" class="btn btn-ghost" hidden>Recalibrer</button>
+        <button id="btnCalibSkip" class="btn btn-ghost">Passer (seuil par défaut)</button>
       </div>
+    </section>
+
+    <!-- ── ÉTAPE 3 — Mesure en cours ──────────────────────────────────── -->
+    <section class="step step-mesure" id="stepMesure" hidden>
 
       <div class="mesure-readouts">
         <div class="readout-big">
@@ -92,7 +129,7 @@
       <button id="btnStop" class="btn btn-ghost btn-large">Arrêter &amp; voir le résultat</button>
     </section>
 
-    <!-- ── ÉTAPE 3 — Résultat ─────────────────────────────────────────── -->
+    <!-- ── ÉTAPE 4 — Résultat ─────────────────────────────────────────── -->
     <section class="step step-report" id="stepReport" hidden>
       <div class="report-head">
         <h2>Résultat</h2>
@@ -121,6 +158,8 @@
           <span class="report-metric-sub">optimal ≈ 0.28</span>
         </div>
       </div>
+
+      <p class="report-calib-note" id="reportCalibNote"></p>
 
       <div class="report-charts">
         <div class="report-chart-block">

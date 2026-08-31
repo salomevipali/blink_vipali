@@ -141,13 +141,104 @@ body {
 video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
 #overlay { position: absolute; inset: 0; width: 100%; height: 100%; transform: scaleX(-1); }
 
-.mesure-readouts {
+.mesure-readouts,
+.calib-panel {
   background: var(--panel);
   border: 1px solid var(--panel-line);
   border-top: none;
   border-radius: 0 0 var(--radius) var(--radius);
   margin-top: -1px;
   padding: 20px;
+}
+
+.panel-title {
+  display: block;
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.calib-instruction {
+  color: var(--ink-dim);
+  font-size: 0.9rem;
+  margin: 4px 0 18px;
+}
+
+.calib-live {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  background: var(--bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 18px;
+}
+.calib-live-label {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.72rem;
+  color: var(--ink-dim);
+}
+.calib-live-value {
+  font-size: 1.1rem;
+  color: var(--ear-blue);
+  font-variant-numeric: tabular-nums;
+}
+
+.calib-phases {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.calib-phase {
+  background: var(--bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: center;
+}
+.calib-phase-label {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 0.7rem;
+  color: var(--ink-dim);
+}
+.calib-phase-value {
+  font-size: 1.2rem;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.calib-phase .btn { padding: 8px 10px; font-size: 0.82rem; }
+.calib-phase .btn:disabled { opacity: 0.35; }
+
+.calib-result {
+  font-size: 0.85rem;
+  color: var(--good-green);
+  background: rgba(92, 184, 92, 0.1);
+  border: 1px solid rgba(92, 184, 92, 0.3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+}
+.calib-warning {
+  font-size: 0.85rem;
+  color: var(--alert-red);
+  background: rgba(224, 92, 92, 0.1);
+  border: 1px solid rgba(224, 92, 92, 0.3);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+}
+
+.step-calib .btn-ghost { margin-top: 10px; }
+.step-calib .btn-large { margin-top: 18px; }
+
+.report-calib-note {
+  font-size: 0.78rem;
+  color: var(--ink-dim);
+  margin: -8px 0 18px;
 }
 
 .readout-big { text-align: center; margin-bottom: 18px; }

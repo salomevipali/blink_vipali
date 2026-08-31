@@ -41,6 +41,16 @@ export const CONFIG = {
   DETECTION_RATE_MIN: 0.80,
   N_BLINKS_MIN: 5,
 
+  // ── Calibration (nouveau — pas de contrepartie Python) ──────────────────
+  // Capture l'EAR yeux ouverts puis yeux fermés pour calculer un seuil
+  // personnalisé, au lieu du seuil fixe EAR_SEUIL ci-dessus.
+  CALIBRATION_DUREE_SEC: 2.0,
+  // Position du seuil entre EAR fermé et EAR ouvert (0 = seuil = EAR fermé,
+  // 1 = seuil = EAR ouvert). 0.5 = à mi-chemin.
+  CALIBRATION_RATIO: 0.3,
+  // Écart minimum (ouvert - fermé) pour considérer la calibration fiable.
+  CALIBRATION_ECART_MIN: 0.04,
+
   // ── Affichage EAR max pour les jauges (borne haute visuelle) ────────────
   EAR_JAUGE_MAX: 0.40,
 

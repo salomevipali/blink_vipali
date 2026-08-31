@@ -1,7 +1,8 @@
 // =============================================================================
-// main.js — Flux en 3 écrans (instructions → mesure → résultat)
-// Capture caméra, détection MediaPipe, boucle temps réel, rapport final
-// (port de detection.analyser_source() + visualisation.py + run.py)
+// main.js — Flux en 4 écrans (instructions → calibration → mesure → résultat)
+// Capture caméra, détection MediaPipe, calibration EAR, boucle temps réel
+// (port de detection.analyser_source() + visualisation.py + run.py,
+//  + calibration EAR ouvert/fermé, sans équivalent côté Python)
 // =============================================================================
 
 import { FilesetResolver, FaceLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
@@ -13,19 +14,34 @@ import { calculerMetriques } from "./metrics.js";
 // ── Éléments DOM ─────────────────────────────────────────────────────────────
 
 const stepIntro = document.getElementById("stepIntro");
+const stepCalib = document.getElementById("stepCalib");
 const stepMesure = document.getElementById("stepMesure");
 const stepReport = document.getElementById("stepReport");
 const stepDots = document.querySelectorAll(".step-dot");
 
+const captureArea = document.getElementById("captureArea");
 const video = document.getElementById("video");
 const overlay = document.getElementById("overlay");
 const octx = overlay.getContext("2d");
 
 const btnStart = document.getElementById("btnStart");
-const btnStop = document.getElementById("btnStop");
-const btnRestart = document.getElementById("btnRestart");
 const dureeInput = document.getElementById("dureeInput");
 const introError = document.getElementById("introError");
+
+const calibInstruction = document.getElementById("calibInstruction");
+const calibLiveEar = document.getElementById("calibLiveEar");
+const btnCalibOpen = document.getElementById("btnCalibOpen");
+const btnCalibClosed = document.getElementById("btnCalibClosed");
+const calibOpenValue = document.getElementById("calibOpenValue");
+const calibClosedValue = document.getElementById("calibClosedValue");
+const calibResult = document.getElementById("calibResult");
+const calibWarning = document.getElementById("calibWarning");
+const btnCalibNext = document.getElementById("btnCalibNext");
+const btnCalibRedo = document.getElementById("btnCalibRedo");
+const btnCalibSkip = document.getElementById("btnCalibSkip");
+
+const btnStop = document.getElementById("btnStop");
+const btnRestart = document.getElementById("btnRestart");
 
 const valBlinks = document.getElementById("valBlinks");
 const valEar = document.getElementById("valEar");
@@ -42,23 +58,30 @@ const repBR = document.getElementById("repBR");
 const repBD = document.getElementById("repBD");
 const repBRV = document.getElementById("repBRV");
 const repEAR = document.getElementById("repEAR");
+const reportCalibNote = document.getElementById("reportCalibNote");
 const reportBars = document.getElementById("reportBars");
 const chartEarSignal = document.getElementById("chartEarSignal");
 const chartDurations = document.getElementById("chartDurations");
 
-gaugeThreshold.style.left = `${(CONFIG.EAR_SEUIL / CONFIG.EAR_JAUGE_MAX) * 100}%`;
+function positionGaugeThreshold() {
+  gaugeThreshold.style.left = `${(CONFIG.EAR_SEUIL / CONFIG.EAR_JAUGE_MAX) * 100}%`;
+}
+positionGaugeThreshold();
 
 // ── Navigation entre écrans ───────────────────────────────────────────────────
 
+const STEP_ORDER = ["intro", "calib", "mesure", "report"];
+
 function goToStep(name) {
   stepIntro.hidden = name !== "intro";
+  stepCalib.hidden = name !== "calib";
   stepMesure.hidden = name !== "mesure";
   stepReport.hidden = name !== "report";
+  captureArea.hidden = !(name === "calib" || name === "mesure");
 
-  const order = ["intro", "mesure", "report"];
-  const idx = order.indexOf(name);
+  const idx = STEP_ORDER.indexOf(name);
   stepDots.forEach((dot) => {
-    const dotIdx = order.indexOf(dot.dataset.step);
+    const dotIdx = STEP_ORDER.indexOf(dot.dataset.step);
     dot.classList.toggle("active", dotIdx === idx);
     dot.classList.toggle("done", dotIdx < idx);
   });
@@ -72,6 +95,7 @@ let faceLandmarker = null;
 let stream = null;
 let running = false;
 let rafId = null;
+let currentStep = "intro"; // branche la boucle : 'calib' | 'mesure'
 
 let detector = null;
 let indexFrame = 0;
@@ -84,7 +108,110 @@ const signalEar = [];
 const timestamps = [];
 const clignements = [];
 
+// ── Calibration ──────────────────────────────────────────────────────────────
+
+let calibCaptureActive = false;
+let calibSamples = [];
+let earOpenCalib = null;
+let earClosedCalib = null;
+let calibApplied = false;
+
+function resetCalibUI() {
+  earOpenCalib = null;
+  earClosedCalib = null;
+  calibApplied = false;
+  calibOpenValue.textContent = "—";
+  calibClosedValue.textContent = "—";
+  btnCalibOpen.disabled = false;
+  btnCalibOpen.textContent = "Capturer (2 s)";
+  btnCalibClosed.disabled = true;
+  btnCalibClosed.textContent = "Capturer (2 s)";
+  btnCalibNext.disabled = true;
+  btnCalibRedo.hidden = true;
+  calibResult.hidden = true;
+  calibWarning.hidden = true;
+  calibInstruction.textContent = "Regarde la caméra, les yeux bien ouverts.";
+}
+
+function capturerPhase(phase, btn, valueEl) {
+  btn.disabled = true;
+  calibSamples = [];
+  calibCaptureActive = true;
+  let secondesRestantes = CONFIG.CALIBRATION_DUREE_SEC;
+  btn.textContent = `${secondesRestantes.toFixed(1)} s…`;
+
+  const tickMs = 100;
+  const interval = setInterval(() => {
+    secondesRestantes -= tickMs / 1000;
+    if (secondesRestantes > 0) btn.textContent = `${secondesRestantes.toFixed(1)} s…`;
+  }, tickMs);
+
+  setTimeout(() => {
+    clearInterval(interval);
+    calibCaptureActive = false;
+    const moyenne =
+      calibSamples.length > 0
+        ? calibSamples.reduce((a, b) => a + b, 0) / calibSamples.length
+        : NaN;
+
+    btn.textContent = "Capturer (2 s)";
+    valueEl.textContent = Number.isNaN(moyenne) ? "—" : moyenne.toFixed(3);
+
+    if (phase === "open") {
+      earOpenCalib = moyenne;
+      calibInstruction.textContent = "Maintenant, ferme les yeux et garde-les fermés.";
+      btnCalibClosed.disabled = false;
+    } else {
+      earClosedCalib = moyenne;
+      finaliserCalibration();
+    }
+  }, CONFIG.CALIBRATION_DUREE_SEC * 1000);
+}
+
+function finaliserCalibration() {
+  const ecart = earOpenCalib - earClosedCalib;
+
+  if (Number.isNaN(ecart) || ecart < CONFIG.CALIBRATION_ECART_MIN) {
+    calibWarning.hidden = false;
+    calibWarning.textContent =
+      `Écart trop faible entre yeux ouverts et fermés — seuil par défaut conservé ` +
+      `(${CONFIG.EAR_SEUIL.toFixed(2)}). Réessaie avec un meilleur éclairage si besoin.`;
+    calibResult.hidden = true;
+    calibApplied = false;
+  } else {
+    const seuil = earClosedCalib + ecart * CONFIG.CALIBRATION_RATIO;
+    CONFIG.EAR_SEUIL = seuil;
+    positionGaugeThreshold();
+    calibWarning.hidden = true;
+    calibResult.hidden = false;
+    calibResult.textContent =
+      `Seuil personnalisé : ${seuil.toFixed(3)} ` +
+      `(ouverts ${earOpenCalib.toFixed(3)} / fermés ${earClosedCalib.toFixed(3)})`;
+    calibApplied = true;
+  }
+
+  btnCalibNext.disabled = false;
+  btnCalibRedo.hidden = false;
+}
+
+btnCalibOpen.addEventListener("click", () => capturerPhase("open", btnCalibOpen, calibOpenValue));
+btnCalibClosed.addEventListener("click", () => capturerPhase("closed", btnCalibClosed, calibClosedValue));
+btnCalibRedo.addEventListener("click", resetCalibUI);
+btnCalibNext.addEventListener("click", passerEnMesure);
+btnCalibSkip.addEventListener("click", passerEnMesure);
+
 // ── Initialisation MediaPipe ──────────────────────────────────────────────────
+
+function _delai(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function _avecDelaiMax(promesse, ms) {
+  const timeout = _delai(ms).then(() => {
+    throw new Error("timeout");
+  });
+  return Promise.race([promesse, timeout]);
+}
 
 async function initFaceLandmarker() {
   const filesetResolver = await FilesetResolver.forVisionTasks(
@@ -104,19 +231,29 @@ async function initFaceLandmarker() {
 // ── Démarrage (étape 1 → 2) ───────────────────────────────────────────────────
 
 async function start() {
+  const labelInitial = btnStart.textContent;
   btnStart.disabled = true;
   introError.hidden = true;
 
   if (!faceLandmarker) {
+    btnStart.textContent = "Chargement du modèle…";
     try {
-      await initFaceLandmarker();
+      await _avecDelaiMax(initFaceLandmarker(), 20000);
     } catch (err) {
-      showIntroError("Le modèle de détection n'a pas pu se charger. Vérifie ta connexion et réessaie.");
+      const timeoutMsg = err && err.message === "timeout";
+      showIntroError(
+        timeoutMsg
+          ? "Le modèle met trop de temps à charger — le réseau bloque peut-être le CDN (jsdelivr / storage.googleapis.com). Essaie un autre wifi si possible."
+          : "Le modèle de détection n'a pas pu se charger. Vérifie ta connexion et réessaie."
+      );
       console.error(err);
       btnStart.disabled = false;
+      btnStart.textContent = labelInitial;
       return;
     }
   }
+
+  btnStart.textContent = "Connexion à la caméra…";
 
   try {
     stream = await navigator.mediaDevices.getUserMedia({
@@ -127,6 +264,7 @@ async function start() {
     showIntroError("Accès à la caméra refusé. Autorise-la dans les réglages de ton navigateur.");
     console.error(err);
     btnStart.disabled = false;
+    btnStart.textContent = labelInitial;
     return;
   }
 
@@ -137,17 +275,25 @@ async function start() {
   overlay.height = video.videoHeight;
 
   dureeCible = Number(dureeInput.value);
-  resetSession();
-  goToStep("mesure");
+  resetCalibUI();
+  currentStep = "calib";
+  goToStep("calib");
 
   running = true;
   rafId = requestAnimationFrame(loop);
   btnStart.disabled = false;
+  btnStart.textContent = labelInitial;
 }
 
 function showIntroError(msg) {
   introError.textContent = msg;
   introError.hidden = false;
+}
+
+function passerEnMesure() {
+  currentStep = "mesure";
+  resetSession();
+  goToStep("mesure");
 }
 
 function resetSession() {
@@ -166,43 +312,52 @@ function resetSession() {
 
 // ── Boucle principale ────────────────────────────────────────────────────────
 
+let dernierEar = CONFIG.EAR_SEUIL + 0.1;
+
 function loop() {
   if (!running) return;
 
   const now = performance.now();
-  const tSec = (now - tDebut) / 1000;
-
   const result = faceLandmarker.detectForVideo(video, now);
 
   let ear;
   if (result.faceLandmarks && result.faceLandmarks.length > 0) {
     const landmarks = result.faceLandmarks[0];
     ear = calculerEarMoyen(landmarks, video.videoWidth, video.videoHeight);
-    nFramesDetectees += 1;
+    if (currentStep === "mesure") nFramesDetectees += 1;
   } else {
-    ear = signalEar.length > 0 ? signalEar[signalEar.length - 1] : CONFIG.EAR_SEUIL + 0.05;
+    ear = dernierEar;
   }
+  dernierEar = ear;
 
-  signalEar.push(ear);
-  timestamps.push(tSec);
+  if (currentStep === "calib") {
+    calibLiveEar.textContent = ear.toFixed(3);
+    if (calibCaptureActive) calibSamples.push(ear);
+    drawOverlay(ear);
+  } else if (currentStep === "mesure") {
+    const tSec = (now - tDebut) / 1000;
 
-  const blink = detector.update(ear, indexFrame, tSec);
-  if (blink) clignements.push(blink);
+    signalEar.push(ear);
+    timestamps.push(tSec);
 
-  updateReadouts(ear, tSec);
-  drawOverlay(ear);
+    const blink = detector.update(ear, indexFrame, tSec);
+    if (blink) clignements.push(blink);
 
-  indexFrame += 1;
+    updateReadouts(ear, tSec);
+    drawOverlay(ear);
 
-  if (dureeCible > 0 && tSec >= dureeCible) {
-    stop();
-    return;
+    indexFrame += 1;
+
+    if (dureeCible > 0 && tSec >= dureeCible) {
+      stop();
+      return;
+    }
   }
 
   rafId = requestAnimationFrame(loop);
 }
 
-// ── Mise à jour des lectures (étape 2) ────────────────────────────────────────
+// ── Mise à jour des lectures (étape 3) ────────────────────────────────────────
 
 function brGlissant(tActuel) {
   const fenetre = CONFIG.FENETRE_BR_SEC;
@@ -250,7 +405,7 @@ function drawOverlay(ear) {
   }
 }
 
-// ── Arrêt & rapport (étape 2 → 3) ─────────────────────────────────────────────
+// ── Arrêt & rapport (étape 3 → 4) ─────────────────────────────────────────────
 
 function stop() {
   running = false;
@@ -258,6 +413,7 @@ function stop() {
   if (stream) stream.getTracks().forEach((t) => t.stop());
 
   btnStop.disabled = true;
+  currentStep = "report";
 
   const nFrames = signalEar.length;
   const dureeSec = timestamps.length > 0 ? timestamps[timestamps.length - 1] : 0;
@@ -286,6 +442,10 @@ function showReport(m) {
   repBRV.textContent = Number.isNaN(m.brv) ? "—" : `${m.brv.toFixed(1)} %`;
   repEAR.textContent = Number.isNaN(m.earBaseline) ? "—" : m.earBaseline.toFixed(3);
 
+  reportCalibNote.textContent = calibApplied
+    ? `Seuil personnalisé utilisé : ${CONFIG.EAR_SEUIL.toFixed(3)}`
+    : `Seuil par défaut utilisé : ${CONFIG.EAR_SEUIL.toFixed(3)} (pas de calibration)`;
+
   const bars = [
     { label: "score br", value: m.scoreBR, color: "var(--ear-blue)" },
     { label: "score bd", value: m.scoreBD, color: "var(--blink-orange)" },
@@ -309,7 +469,6 @@ function showReport(m) {
     })
     .join("");
 
-  // Les canvas doivent être dimensionnés une fois affichés (clientWidth > 0)
   requestAnimationFrame(() => {
     drawEarSignalChart();
     drawDurationsHistogram();
@@ -345,7 +504,6 @@ function drawEarSignalChart() {
   const xOf = (t) => padL + (t / tMax) * w;
   const yOf = (ear) => padT + h - (Math.min(Math.max(ear, 0), yMax) / yMax) * h;
 
-  // Axe Y (seuil)
   const ySeuil = yOf(CONFIG.EAR_SEUIL);
   ctx.strokeStyle = CONFIG.COULEUR_SEUIL;
   ctx.setLineDash([4, 3]);
@@ -359,7 +517,6 @@ function drawEarSignalChart() {
   ctx.font = "9px ui-monospace, monospace";
   ctx.fillText(CONFIG.EAR_SEUIL.toFixed(2), 2, ySeuil + 3);
 
-  // Zone sous le seuil (clignements)
   ctx.fillStyle = "rgba(224,92,92,0.15)";
   for (let i = 1; i < signalEar.length; i++) {
     if (signalEar[i] < CONFIG.EAR_SEUIL) {
@@ -369,7 +526,6 @@ function drawEarSignalChart() {
     }
   }
 
-  // Signal EAR
   ctx.strokeStyle = CONFIG.COULEUR_EAR;
   ctx.lineWidth = 1.3;
   ctx.beginPath();
@@ -381,7 +537,6 @@ function drawEarSignalChart() {
   });
   ctx.stroke();
 
-  // Marqueurs de clignements
   ctx.fillStyle = CONFIG.COULEUR_BLINKS;
   clignements.forEach((b) => {
     const tMid = (b.timestampDebut + b.timestampFin) / 2;
@@ -395,7 +550,6 @@ function drawEarSignalChart() {
     ctx.fill();
   });
 
-  // Axe X (temps)
   ctx.fillStyle = "#8b96a5";
   ctx.font = "9px ui-monospace, monospace";
   ctx.fillText("0s", padL, cssH - 4);
@@ -453,7 +607,6 @@ function drawDurationsHistogram() {
     ctx.fillRect(x, y, Math.max(barW, 1), barH);
   });
 
-  // Ligne moyenne
   const moyenne = durees.reduce((a, b) => a + b, 0) / durees.length;
   const xMoy = padL + ((moyenne - dMin) / range) * w;
   ctx.strokeStyle = CONFIG.COULEUR_SEUIL;
@@ -477,5 +630,6 @@ function drawDurationsHistogram() {
 btnStart.addEventListener("click", start);
 btnStop.addEventListener("click", stop);
 btnRestart.addEventListener("click", () => {
+  currentStep = "intro";
   goToStep("intro");
 });
