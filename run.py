@@ -5,6 +5,13 @@ Created on Wed Jul  1 11:26:40 2026
 @author: Restart
 """
 
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jul  1 11:26:40 2026
+
+@author: Restart
+"""
+
 # =============================================================================
 # run.py — Lanceur Spyder / console IPython
 # =============================================================================
@@ -12,6 +19,7 @@ Created on Wed Jul  1 11:26:40 2026
 #   runfile('C:/chemin/vers/blink_vipali/run.py')
 # =============================================================================
 
+import calibration
 import detection
 import metriques
 import visualisation
@@ -21,6 +29,19 @@ import visualisation
 MODE   = "camera"                        # "video" ou "camera"
 VIDEO  = r"C:\chemin\vers\video.mp4"    # ignoré si MODE = "camera"
 DUREE  = 90.0                            # secondes, ignoré si MODE = "video"
+
+CALIBRER = True                          # False pour sauter la calibration
+                                          # et garder config.EAR_SEUIL tel quel
+
+# ── 0. Calibration (yeux ouverts / yeux fermés) ───────────────────────────────
+# N'a de sens qu'en caméra live (on demande d'ouvrir/fermer les yeux) —
+# ignorée automatiquement en mode "video".
+
+if CALIBRER and MODE == "camera":
+    resultat_calibration = calibration.calibrer(source=0)
+    calibration.appliquer_calibration(resultat_calibration)
+elif CALIBRER and MODE == "video":
+    print("[INFO] Calibration ignorée en mode 'video' (seuil par défaut conservé).")
 
 # ── 1. Détection ──────────────────────────────────────────────────────────────
 

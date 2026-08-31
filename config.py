@@ -101,6 +101,21 @@ DETECTION_RATE_MIN = 0.80   # < 80% de frames détectées → mesure rejetée
 N_BLINKS_MIN = 5
 
 
+# ── Calibration ────────────────────────────────────────────────────────────────
+
+# Durée de chaque phase de calibration (yeux ouverts / yeux fermés), en secondes
+CALIBRATION_DUREE_SEC = 5.0
+
+# Position du seuil entre EAR fermé et EAR ouvert.
+# 0.0 → seuil = EAR fermé   |   1.0 → seuil = EAR ouvert   |   0.5 → à mi-chemin
+CALIBRATION_RATIO = 0.5
+
+# Écart minimum (EAR ouvert - EAR fermé) pour considérer la calibration fiable.
+# En dessous, on garde EAR_SEUIL par défaut (mauvais éclairage, visage mal
+# détecté, occlusion des yeux, etc.)
+CALIBRATION_ECART_MIN = 0.04
+
+
 # ── Visualisation ─────────────────────────────────────────────────────────────
 
 COULEUR_EAR      = "#4A90D9"   # bleu
