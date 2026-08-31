@@ -4,12 +4,46 @@
 // (port de detection.analyser_source() + visualisation.py + run.py,
 //  + calibration EAR ouvert/fermé, sans équivalent côté Python)
 // =============================================================================
+//
+// IMPORTANT : MediaPipe (FilesetResolver / FaceLandmarker) n'est PAS importé
+// statiquement en haut de ce fichier. Un import statique qui échoue (CDN
+// bloqué, wifi filtré...) arrête l'exécution de tout le module — y compris
+// le branchement des boutons — sans aucun message visible. Il est donc
+// chargé dynamiquement dans initFaceLandmarker(), dans un try/catch, pour
+// que le reste de l'app (et les boutons) fonctionne toujours, avec une
+// vraie erreur affichée à l'écran si le CDN est injoignable.
+// =============================================================================
 
-import { FilesetResolver, FaceLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
 import { CONFIG } from "./config.js";
 import { calculerEarMoyen } from "./earUtils.js";
 import { BlinkDetector } from "./blinkDetector.js";
 import { calculerMetriques } from "./metrics.js";
+
+// ── Filet de sécurité : toute erreur JS non gérée s'affiche à l'écran ────────
+// (utile en démo, pour ne jamais avoir besoin de la console du navigateur)
+
+function _afficherErreurGlobale(message) {
+  let banniere = document.getElementById("erreurGlobale");
+  if (!banniere) {
+    banniere = document.createElement("div");
+    banniere.id = "erreurGlobale";
+    banniere.style.cssText =
+      "position:fixed;bottom:0;left:0;right:0;background:#e05c5c;color:#1a0d0d;" +
+      "font-family:monospace;font-size:12px;padding:10px 14px;z-index:9999;" +
+      "white-space:pre-wrap;word-break:break-word;";
+    document.body.appendChild(banniere);
+  }
+  banniere.textContent = `Erreur technique : ${message}`;
+}
+
+window.addEventListener("error", (e) => {
+  _afficherErreurGlobale(e.message || String(e.error || "erreur inconnue"));
+});
+window.addEventListener("unhandledrejection", (e) => {
+  _afficherErreurGlobale(
+    (e.reason && (e.reason.message || String(e.reason))) || "promesse rejetée sans message"
+  );
+});
 
 // ── Éléments DOM ─────────────────────────────────────────────────────────────
 
@@ -214,6 +248,9 @@ async function _avecDelaiMax(promesse, ms) {
 }
 
 async function initFaceLandmarker() {
+  const { FilesetResolver, FaceLandmarker } = await import(
+    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs"
+  );
   const filesetResolver = await FilesetResolver.forVisionTasks(
     "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm"
   );
